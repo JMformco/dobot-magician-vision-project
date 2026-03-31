@@ -37,12 +37,14 @@ def main():
     if ret != 0:
         print(f"Failed to create handle! ret[0x{ret:x}]")
         sys.exit()
+    print(f"  -> Handle created OK", flush=True)
 
     # 3. Open the camera connection
     ret = cam.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
     if ret != 0:
         print(f"Failed to open device! ret[0x{ret:x}]")
         sys.exit()
+    print(f"  -> Device opened OK", flush=True)
 
     # Find the payload size so we can allocate enough memory for a raw frame
     stParam = MVCC_INTVALUE()
@@ -53,6 +55,7 @@ def main():
         sys.exit()
     
     payload_size = stParam.nCurValue
+    print(f"  -> PayloadSize: {payload_size} bytes", flush=True)
     # Create the buffer in RAM to intercept the camera frame
     data_buf = (c_ubyte * payload_size)()
 
@@ -61,15 +64,19 @@ def main():
     if ret != 0:
         print(f"Failed to start grabbing! ret[0x{ret:x}]")
         sys.exit()
+    print(f"  -> Grabbing started OK", flush=True)
 
     stbInfo = MV_FRAME_OUT_INFO_EX()
     memset(byref(stbInfo), 0, sizeof(stbInfo))
 
-    print("Tracking Red Color on Hikrobot Camera. Press 'q' to quit.")
+    print("Tracking Red Color on Hikrobot Camera. Press 'q' to quit.", flush=True)
 
     frame_count = 0
+    fail_count = 0
     while True:
         # 5. Ask the Hikrobot camera for a single frame (Wait max 1000ms)
+        if frame_count == 0 and fail_count == 0:
+            print("  -> Waiting for first frame...", flush=True)
         ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), payload_size, stbInfo, 1000)
         
         if ret == 0:
@@ -144,7 +151,11 @@ def main():
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else:
-            print(f"Frame grab failed! ret[0x{ret:x}]")
+            fail_count += 1
+            print(f"Frame grab failed! ret[0x{ret:x}] (attempt {fail_count})", flush=True)
+            if fail_count >= 10:
+                print("Too many consecutive failures. Exiting.", flush=True)
+                break
 
     # -----------------------------------------------------
     # --- PROPER CLEANUP (Crucial for Hikrobot memory) ----

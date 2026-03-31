@@ -46,6 +46,25 @@ def main():
         sys.exit()
     print(f"  -> Device opened OK", flush=True)
 
+    # For GigE cameras: set the optimal packet size for the network adapter
+    # This is CRITICAL — without it, frames won't arrive if jumbo frames aren't enabled
+    nPacketSize = cam.MV_CC_GetOptimalPacketSize()
+    if nPacketSize > 0:
+        ret = cam.MV_CC_SetIntValue("GevSCPSPacketSize", nPacketSize)
+        if ret == 0:
+            print(f"  -> GigE packet size set to {nPacketSize}", flush=True)
+        else:
+            print(f"  -> Warning: Could not set packet size (ret[0x{ret:x}])", flush=True)
+    else:
+        print(f"  -> Not a GigE camera or could not determine packet size", flush=True)
+
+    # Make sure trigger mode is OFF (free-run mode) so frames flow continuously
+    ret = cam.MV_CC_SetEnumValue("TriggerMode", 0)
+    if ret == 0:
+        print(f"  -> Trigger mode set to OFF (free-run)", flush=True)
+    else:
+        print(f"  -> Warning: Could not set trigger mode (ret[0x{ret:x}])", flush=True)
+
     # Find the payload size so we can allocate enough memory for a raw frame
     stParam = MVCC_INTVALUE()
     memset(byref(stParam), 0, sizeof(MVCC_INTVALUE))

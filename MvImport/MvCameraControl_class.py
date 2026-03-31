@@ -12,7 +12,32 @@ from MvErrorDefine_const import *
 from PixelType_const import *
 from PixelType_header import *
 
-MvCamCtrldll = WinDLL("MvCameraControl.dll")
+# Try to load the DLL. If not on PATH, search standard MVS installation directories.
+import os as _os
+_dll_name = "MvCameraControl.dll"
+_dll_path = None
+
+# Standard Hikrobot MVS runtime locations (64-bit and 32-bit)
+_search_dirs = [
+    r"C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64",
+    r"C:\Program Files (x86)\Common Files\MVS\Runtime\Win32_i86",
+    r"C:\Program Files\Common Files\MVS\Runtime\Win64_x64",
+    r"C:\Program Files\Common Files\MVS\Runtime\Win32_i86",
+]
+
+for _d in _search_dirs:
+    _candidate = _os.path.join(_d, _dll_name)
+    if _os.path.isfile(_candidate):
+        _dll_path = _candidate
+        break
+
+if _dll_path:
+    # Add the runtime dir so dependent DLLs are also found
+    _os.add_dll_directory(_os.path.dirname(_dll_path))
+    MvCamCtrldll = WinDLL(_dll_path)
+else:
+    # Fallback: try loading by name (works if already on PATH)
+    MvCamCtrldll = WinDLL(_dll_name)
 
 # 用于回调函数传入相机实例
 class _MV_PY_OBJECT_(Structure):

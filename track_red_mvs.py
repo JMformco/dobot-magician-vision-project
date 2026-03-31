@@ -69,7 +69,7 @@ def main():
 
     while True:
         # 5. Ask the Hikrobot camera for a single frame (Wait max 1000ms)
-        ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), payload_size, byref(stbInfo), 1000)
+        ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), payload_size, stbInfo, 1000)
         
         if ret == 0:
             # Successfully got a frame! We must convert raw bytes into a format OpenCV understands.

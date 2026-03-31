@@ -5,10 +5,12 @@ from ctypes import *
 
 # Attempt to import Hikrobot Camera SDK
 try:
-    # Important: The 'MvImport' folder from the MVS installation MUST be in the same directory as this script!
-    from MvImport.MvCameraControl_class import *
-except ImportError:
-    print("\n[ERROR] Hikrobot Library Not Found!")
+    # Important: Add the 'MvImport' folder to the system path so internal module imports work
+    import os
+    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "MvImport"))
+    from MvCameraControl_class import *
+except ImportError as e:
+    print(f"\n[ERROR] Hikrobot Library Error: {e}")
     print("Please copy the 'MvImport' folder from:")
     print("C:\\Program Files (x86)\\MVS\\Development\\python\\")
     print("and paste it right next to this script in your project folder.")

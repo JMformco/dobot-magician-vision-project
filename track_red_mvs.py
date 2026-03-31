@@ -67,11 +67,16 @@ def main():
 
     print("Tracking Red Color on Hikrobot Camera. Press 'q' to quit.")
 
+    frame_count = 0
     while True:
         # 5. Ask the Hikrobot camera for a single frame (Wait max 1000ms)
         ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), payload_size, stbInfo, 1000)
         
         if ret == 0:
+            frame_count += 1
+            if frame_count == 1:
+                print(f"First frame received! Size: {stbInfo.nWidth}x{stbInfo.nHeight}, PixelType: 0x{stbInfo.enPixelType:x}")
+
             # Successfully got a frame! We must convert raw bytes into a format OpenCV understands.
             # Convert pointer buffer to Numpy Array
             nparr = np.frombuffer(data_buf, dtype=np.uint8, count=payload_size)
@@ -138,6 +143,8 @@ def main():
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+        else:
+            print(f"Frame grab failed! ret[0x{ret:x}]")
 
     # -----------------------------------------------------
     # --- PROPER CLEANUP (Crucial for Hikrobot memory) ----

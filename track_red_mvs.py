@@ -96,7 +96,7 @@ def main():
         # 5. Ask the Hikrobot camera for a single frame (Wait max 1000ms)
         if frame_count == 0 and fail_count == 0:
             print("  -> Waiting for first frame...", flush=True)
-        ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), payload_size, stbInfo, 1000)
+        ret = cam.MV_CC_GetOneFrameTimeout(data_buf, payload_size, stbInfo, 1000)
         
         if ret == 0:
             frame_count += 1
@@ -131,11 +131,11 @@ def main():
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
             hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-            lower_red_1 = np.array([0, 120, 70])
+            lower_red_1 = np.array([0, 20, 20])
             upper_red_1 = np.array([10, 255, 255])
             mask1 = cv2.inRange(hsv, lower_red_1, upper_red_1)
 
-            lower_red_2 = np.array([170, 120, 70])
+            lower_red_2 = np.array([170, 20, 20])
             upper_red_2 = np.array([180, 255, 255])
             mask2 = cv2.inRange(hsv, lower_red_2, upper_red_2)
 

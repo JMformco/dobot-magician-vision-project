@@ -19,21 +19,21 @@ except ImportError as e:
 # Format: 'color_name': [(lower_bound, upper_bound), ...]
 COLOR_RANGES = {
     'red': [
-        (np.array([0, 50, 50]), np.array([10, 255, 255])),
-        (np.array([160, 50, 50]), np.array([180, 255, 255]))
+        (np.array([0, 30, 30]), np.array([10, 255, 255])),
+        (np.array([160, 30, 30]), np.array([180, 255, 255]))
     ],
     'green': [
-        (np.array([35, 50, 50]), np.array([85, 255, 255]))
+        (np.array([35, 30, 30]), np.array([85, 255, 255]))
     ],
     'blue': [
-        (np.array([100, 50, 50]), np.array([130, 255, 255]))
+        (np.array([100, 30, 30]), np.array([130, 255, 255]))
     ],
     'yellow': [
-        (np.array([20, 50, 50]), np.array([35, 255, 255]))
+        (np.array([20, 30, 30]), np.array([35, 255, 255]))
     ],
     'white': [
         # White has varying hue, low saturation, high brightness
-        (np.array([0, 0, 180]), np.array([180, 40, 255]))
+        (np.array([0, 0, 50]), np.array([180, 40, 255]))
     ]
 }
 

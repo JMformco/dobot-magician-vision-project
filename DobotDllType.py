@@ -587,8 +587,8 @@ QuitDobotApiFlag = True
 
 def load():
     if platform.system() == "Windows":
-        print("您用的dll是64位，为了顺利运行，请保证您的python环境也是64位")
-        print("python环境是：",platform.architecture())
+        # Hemos eliminado los print en chino para evitar errores de codificación en Node-RED
+        print("[INFO] Cargando DLL de Dobot (Windows 64-bit)...")
         return CDLL("./DobotDll.dll",  RTLD_GLOBAL)
     elif platform.system() == "Darwin":
         return CDLL("./libDobotDll.dylib",  RTLD_GLOBAL)

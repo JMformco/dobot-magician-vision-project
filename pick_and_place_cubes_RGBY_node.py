@@ -198,13 +198,19 @@ def main():
                         conts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                         for c in conts:
                             area = cv2.contourArea(c)
-                            # Minimum area filter to ensure only cubes are detected (especially for yellow)
-                            min_area_threshold = 3000 if color == 'yellow' else 1000
-                            if area > min_area_threshold and area > max_area:
-                                M = cv2.moments(c)
-                                if M["m00"] > 0:
-                                    max_area, detected_color = area, color
-                                    detected_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                            if area > 1000 and area > max_area:
+                                # Shape filter to ensure we only pick up squares
+                                peri = cv2.arcLength(c, True)
+                                approx = cv2.approxPolyDP(c, 0.04 * peri, True)
+                                
+                                if len(approx) == 4:
+                                    _, _, w, h = cv2.boundingRect(approx)
+                                    aspect_ratio = float(w) / h
+                                    if 0.90 <= aspect_ratio <= 1.10:
+                                        M = cv2.moments(c)
+                                        if M["m00"] > 0:
+                                            max_area, detected_color = area, color
+                                            detected_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
                 # Lógica de estabilidad y movimiento
                 if detected_center:

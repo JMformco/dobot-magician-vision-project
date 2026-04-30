@@ -144,6 +144,15 @@ def main():
         print("[ERROR] calibration_matrix.npy no encontrado. Ejecuta la calibración primero.")
         return
     calibration_matrix = np.load(matrix_path)
+    
+    # 3.5 Cargar Mascara de Vision (Opcional)
+    vision_mask_path = os.path.join(script_dir, "vision_mask.npy")
+    vision_mask_polygon = None
+    if os.path.exists(vision_mask_path):
+        vision_mask_polygon = np.load(vision_mask_path)
+        print(f"[INFO] Mascara de vision cargada con {len(vision_mask_polygon)} puntos.")
+    else:
+        print("[INFO] No se encontro vision_mask.npy. Procesando todo el frame.")
 
     # 4. Iniciar Cámara Hikrobot
     deviceList = MV_CC_DEVICE_INFO_LIST()
@@ -190,11 +199,19 @@ def main():
 
                 # Procesamiento de imagen
                 hsv = cv2.cvtColor(cv2.GaussianBlur(frame, (11, 11), 0), cv2.COLOR_BGR2HSV)
+                
+                roi_mask = None
+                if vision_mask_polygon is not None:
+                    roi_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+                    cv2.fillPoly(roi_mask, [vision_mask_polygon], 255)
+                    
                 detected_color, detected_center, max_area = None, None, 0
 
                 for color in ['red', 'blue', 'green', 'yellow']:
                     mask = apply_color_mask(hsv, color)
                     if mask is not None:
+                        if roi_mask is not None:
+                            mask = cv2.bitwise_and(mask, roi_mask)
                         conts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                         for c in conts:
                             area = cv2.contourArea(c)
@@ -204,13 +221,10 @@ def main():
                                 approx = cv2.approxPolyDP(c, 0.04 * peri, True)
                                 
                                 if len(approx) == 4:
-                                    _, _, w, h = cv2.boundingRect(approx)
-                                    aspect_ratio = float(w) / h
-                                    if 0.90 <= aspect_ratio <= 1.10:
-                                        M = cv2.moments(c)
-                                        if M["m00"] > 0:
-                                            max_area, detected_color = area, color
-                                            detected_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                                    M = cv2.moments(c)
+                                    if M["m00"] > 0:
+                                        max_area, detected_color = area, color
+                                        detected_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
                 # Lógica de estabilidad y movimiento
                 if detected_center:

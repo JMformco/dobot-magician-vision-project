@@ -113,6 +113,15 @@ def main():
         return
     calibration_matrix = np.load(matrix_path)
     
+    # 2.5 Load Vision Mask (optional)
+    vision_mask_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vision_mask.npy")
+    vision_mask_polygon = None
+    if os.path.exists(vision_mask_path):
+        vision_mask_polygon = np.load(vision_mask_path)
+        print(f"Loaded vision mask with {len(vision_mask_polygon)} points.")
+    else:
+        print("No vision mask found. Processing entire frame.")
+    
     # 3. Setup Camera
     deviceList = MV_CC_DEVICE_INFO_LIST()
     tlayerType = MV_GIGE_DEVICE | MV_USB_DEVICE
@@ -170,6 +179,12 @@ def main():
                 blurred = cv2.GaussianBlur(frame, (11, 11), 0)
                 hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
                 
+                roi_mask = None
+                if vision_mask_polygon is not None:
+                    roi_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+                    cv2.fillPoly(roi_mask, [vision_mask_polygon], 255)
+                
+                
                 detected_color = None
                 detected_center = None
                 max_area = 0
@@ -178,15 +193,21 @@ def main():
                 for color in ['red', 'blue','green','yellow']:
                     mask = apply_color_mask(hsv, color)
                     if mask is not None:
+                        if roi_mask is not None:
+                            mask = cv2.bitwise_and(mask, roi_mask)
+                            
                         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                         for c in contours:
                             area = cv2.contourArea(c)
                             if area > 1000 and area > max_area:
-                                M = cv2.moments(c)
-                                if M["m00"] > 0:
-                                    max_area = area
-                                    detected_color = color
-                                    detected_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                                peri = cv2.arcLength(c, True)
+                                approx = cv2.approxPolyDP(c, 0.04 * peri, True)
+                                if len(approx) == 4:
+                                    M = cv2.moments(c)
+                                    if M["m00"] > 0:
+                                        max_area = area
+                                        detected_color = color
+                                        detected_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 
                 # Update Stability Logic
                 if detected_center:

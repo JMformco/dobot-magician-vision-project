@@ -61,7 +61,7 @@ def run_flask():
 COLOR_RANGES = {
     'red': [(np.array([0, 30, 30]), np.array([10, 255, 255])), (np.array([160, 30, 30]), np.array([180, 255, 255]))],
     'blue': [(np.array([100, 25, 25]), np.array([130, 255, 255]))],
-    'green': [(np.array([35, 30, 30]), np.array([85, 255, 255]))],
+    'green': [(np.array([35, 25, 25]), np.array([85, 255, 255]))],
     'yellow': [(np.array([20, 30, 30]), np.array([35, 255, 255]))],
 }
 

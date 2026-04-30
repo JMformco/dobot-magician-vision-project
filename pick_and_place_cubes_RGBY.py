@@ -180,9 +180,14 @@ def main():
                 hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
                 
                 roi_mask = None
+                boundary_mask = None
                 if vision_mask_polygon is not None:
                     roi_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
                     cv2.fillPoly(roi_mask, [vision_mask_polygon], 255)
+                    boundary_mask = cv2.morphologyEx(roi_mask, cv2.MORPH_GRADIENT, np.ones((5,5), np.uint8))
+                else:
+                    boundary_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+                    cv2.rectangle(boundary_mask, (0,0), (frame.shape[1]-1, frame.shape[0]-1), 255, 5)
                 
                 
                 detected_color = None
@@ -202,7 +207,15 @@ def main():
                             if area > 1000 and area > max_area:
                                 peri = cv2.arcLength(c, True)
                                 approx = cv2.approxPolyDP(c, 0.04 * peri, True)
-                                if len(approx) == 4:
+                                
+                                touches_edge = False
+                                for pt in c:
+                                    x, y = pt[0]
+                                    if y < boundary_mask.shape[0] and x < boundary_mask.shape[1] and boundary_mask[y, x] > 0:
+                                        touches_edge = True
+                                        break
+                                        
+                                if len(approx) == 4 or touches_edge:
                                     M = cv2.moments(c)
                                     if M["m00"] > 0:
                                         max_area = area

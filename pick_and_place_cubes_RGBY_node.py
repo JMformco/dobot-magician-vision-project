@@ -116,6 +116,7 @@ def setup_dobot():
             dType.SetQueuedCmdStartExec(api)
             while lastIndex > dType.GetQueuedCmdCurrentIndex(api)[0]:
                 dType.dSleep(100)
+            dType.SetQueuedCmdStopExec(api)
             
             return api
         else:
@@ -201,9 +202,14 @@ def main():
                 hsv = cv2.cvtColor(cv2.GaussianBlur(frame, (11, 11), 0), cv2.COLOR_BGR2HSV)
                 
                 roi_mask = None
+                boundary_mask = None
                 if vision_mask_polygon is not None:
                     roi_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
                     cv2.fillPoly(roi_mask, [vision_mask_polygon], 255)
+                    boundary_mask = cv2.morphologyEx(roi_mask, cv2.MORPH_GRADIENT, np.ones((5,5), np.uint8))
+                else:
+                    boundary_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+                    cv2.rectangle(boundary_mask, (0,0), (frame.shape[1]-1, frame.shape[0]-1), 255, 5)
                     
                 detected_color, detected_center, max_area = None, None, 0
 
@@ -220,7 +226,14 @@ def main():
                                 peri = cv2.arcLength(c, True)
                                 approx = cv2.approxPolyDP(c, 0.04 * peri, True)
                                 
-                                if len(approx) == 4:
+                                touches_edge = False
+                                for pt in c:
+                                    x, y = pt[0]
+                                    if y < boundary_mask.shape[0] and x < boundary_mask.shape[1] and boundary_mask[y, x] > 0:
+                                        touches_edge = True
+                                        break
+                                
+                                if len(approx) == 4 or touches_edge:
                                     M = cv2.moments(c)
                                     if M["m00"] > 0:
                                         max_area, detected_color = area, color

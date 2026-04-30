@@ -175,6 +175,15 @@ def main():
     print("Press 'q' to quit.")
     print("---------------------------------------------------------", flush=True)
 
+    # 5. Load Vision Mask (optional)
+    vision_mask_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vision_mask.npy")
+    vision_mask_polygon = None
+    if os.path.exists(vision_mask_path):
+        vision_mask_polygon = np.load(vision_mask_path)
+        print(f"Loaded vision mask with {len(vision_mask_polygon)} points.")
+    else:
+        print("No vision mask found. Processing entire frame.")
+
     active_color = 'red' # Default start color
     fail_count = 0
 
@@ -205,9 +214,17 @@ def main():
             # Reduce noise 
             blurred = cv2.GaussianBlur(frame, (11, 11), 0)
             hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+            
+            roi_mask = None
+            if vision_mask_polygon is not None:
+                roi_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+                cv2.fillPoly(roi_mask, [vision_mask_polygon], 255)
 
             # Get the mask for the currently active color
             mask = apply_color_mask(hsv, active_color)
+            
+            if mask is not None and roi_mask is not None:
+                mask = cv2.bitwise_and(mask, roi_mask)
 
             if mask is not None:
                 # Find contours

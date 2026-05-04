@@ -150,6 +150,8 @@ class DobotGUI(QMainWindow):
         self.connected = False
         
         self.current_pose = {"X": 0.0, "Y": 0.0, "Z": 0.0, "R": 0.0, "L": 0.0}
+        self.last_pose_vals = None
+        self.stable_counter = 0
         
         # UI Setup
         self.setup_ui()
@@ -328,6 +330,7 @@ class DobotGUI(QMainWindow):
         mode_layout = QHBoxLayout()
         self.move_mode_combo = QComboBox()
         self.move_mode_combo.addItems(["Linear (MOVL)", "Joint (MOVJ)", "Jump (JUMP)"])
+        self.move_mode_combo.setCurrentText("Joint (MOVJ)")
         mode_layout.addWidget(self.move_mode_combo)
         mode_group.setLayout(mode_layout)
         
@@ -520,14 +523,52 @@ class DobotGUI(QMainWindow):
             self.current_pose["L"] = rail_pose[0]
             
             for axis in self.axes:
-                self.ui_elements[axis]["current"].setText(f"{self.current_pose[axis]:.2f}")
+                val = self.current_pose[axis]
+                self.ui_elements[axis]["current"].setText(f"{val:.2f}")
                 
-            self.workspace_map.current_x = pose[0]
-            self.workspace_map.current_y = pose[1]
+            self.workspace_map.current_x = self.current_pose["X"]
+            self.workspace_map.current_y = self.current_pose["Y"]
             self.workspace_map.update()
-        except Exception as e:
-            print(f"Error polling pose: {e}")
             
+            current_vals = [pose[0], pose[1], pose[2], pose[3], rail_pose[0]]
+            if self.last_pose_vals is not None:
+                diff = sum(abs(a - b) for a, b in zip(current_vals, self.last_pose_vals))
+                if diff > 0.5:
+                    self.stable_counter = 0
+                else:
+                    self.stable_counter += 1
+                    
+                if self.stable_counter == 2:
+                    self.sync_targets_to_current()
+                    
+            self.last_pose_vals = current_vals
+            
+        except Exception as e:
+            print("Error getting pose:", e)
+            
+    def sync_targets_to_current(self):
+        for axis in ["X", "Y", "Z", "R", "L"]:
+            val = self.current_pose[axis]
+            self.ui_elements[axis]["target"].blockSignals(True)
+            self.ui_elements[axis]["target"].setValue(val)
+            self.ui_elements[axis]["target"].blockSignals(False)
+            
+        self.z_slider.blockSignals(True)
+        self.z_slider.setValue(int(self.current_pose["Z"]))
+        self.z_slider.blockSignals(False)
+        
+        self.r_dial.blockSignals(True)
+        self.r_dial.setValue(int(self.current_pose["R"]))
+        self.r_dial.blockSignals(False)
+        
+        self.l_slider.blockSignals(True)
+        self.l_slider.setValue(int(self.current_pose["L"]))
+        self.l_slider.blockSignals(False)
+        
+        self.workspace_map.target_x = self.current_pose["X"]
+        self.workspace_map.target_y = self.current_pose["Y"]
+        self.workspace_map.update()
+
     def jog(self, axis, direction):
         if not self.connected: return
         
@@ -572,6 +613,9 @@ class DobotGUI(QMainWindow):
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         
         if reply == QMessageBox.Yes:
+            # Dummy wait command to ensure homing sequence executes reliably
+            dType.SetWAITCmd(self.api, 10, isQueued=1)
+            
             # Set HOME parameters and trigger home command
             dType.SetHOMEParams(self.api, 200, 0, 50, 0, isQueued=1)
             dType.SetHOMECmd(self.api, temp=0, isQueued=1)
@@ -590,7 +634,13 @@ if __name__ == "__main__":
     # Global app styling
     app.setStyle("Fusion")
     window = DobotGUI()
+    
+    # Trick to reliably force window to the foreground on Windows
+    window.setWindowFlags(window.windowFlags() | Qt.WindowStaysOnTopHint)
     window.show()
+    window.setWindowFlags(window.windowFlags() & ~Qt.WindowStaysOnTopHint)
+    window.show()
+    
     window.raise_()
     window.activateWindow()
     sys.exit(app.exec())

@@ -16,10 +16,11 @@ state = dType.ConnectDobot(api, "COM3", 115200)[0]
 print("Connect status:",CON_STR[state])
 
 if (state == dType.DobotConnect.DobotConnect_NoError):
-    
+    dType.dSleep(500)
     #清空队列
     #Clean Command Queued
     dType.SetQueuedCmdClear(api)
+    dType.SetWAITCmd(api, 100, isQueued=1)
     
     #设置运动参数
     #Async Motion Params Setting

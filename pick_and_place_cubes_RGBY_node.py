@@ -92,7 +92,9 @@ def setup_dobot():
         
         if state == dType.DobotConnect.DobotConnect_NoError:
             print("[OK] Dobot Conectado con exito.")
+            dType.dSleep(500)
             dType.SetQueuedCmdClear(api)
+            dType.SetWAITCmd(api, 100, isQueued=1)
             
             # Homing Inicial
             print("[INFO] Realizando Homing...")

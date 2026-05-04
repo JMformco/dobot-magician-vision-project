@@ -15,9 +15,10 @@ state = dType.ConnectDobot(api, "COM3", 115200)[0]
 print("Connect status:", CON_STR[state])
 
 if (state == dType.DobotConnect.DobotConnect_NoError):
-    
+    dType.dSleep(500)
     # Clean Command Queued
     dType.SetQueuedCmdClear(api)
+    dType.SetWAITCmd(api, 100, isQueued=1)
     
     # 1. Set general motion speeds
     dType.SetPTPJointParams(api, 200, 200, 200, 200, 200, 200, 200, 200, isQueued=1)

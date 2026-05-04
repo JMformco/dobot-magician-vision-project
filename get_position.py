@@ -15,9 +15,10 @@ state = dType.ConnectDobot(api, "COM3", 115200)[0]
 print("Connect status:", CON_STR[state])
 
 if (state == dType.DobotConnect.DobotConnect_NoError):
-    
+    dType.dSleep(500)
     # Clear the queue just in case
     dType.SetQueuedCmdClear(api)
+    dType.SetWAITCmd(api, 100, isQueued=1)
 
     # 1. Ask for the arm's position
     # Returns [x, y, z, r, joint1, joint2, joint3, joint4]

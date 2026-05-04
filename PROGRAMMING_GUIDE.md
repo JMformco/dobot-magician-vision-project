@@ -44,8 +44,10 @@ The Dobot controller works using a **Command Queue**. Instead of Python waiting 
 6. Stop execution and cleanly disconnect.
 
 ```python
-# 1. Clear old queue
+# 1. Clear old queue and add a dummy wait to avoid dropping the first command
+dType.dSleep(500)
 dType.SetQueuedCmdClear(api)
+dType.SetWAITCmd(api, 100, isQueued=1)
 
 # ... (Queue up parameters and movements here) ...
 # Example: lastIndex = dType.SetPTPCmd(api, dType.PTPMode.PTPMOVLXYZMode, 200, 0, 0, 0, isQueued=1)[0]
@@ -115,7 +117,9 @@ There are multiple ways to move the arm:
 
 ### Example: Moving in a Square
 ```python
+dType.dSleep(500)
 dType.SetQueuedCmdClear(api)
+dType.SetWAITCmd(api, 100, isQueued=1)
 
 # Let's say we start at X=200, Y=0, Z=0
 # Move to 200, 50

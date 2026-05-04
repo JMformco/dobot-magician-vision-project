@@ -101,7 +101,9 @@ def setup_dobot():
     state = dType.ConnectDobot(api, "COM3", 115200)[0]
     if state == dType.DobotConnect.DobotConnect_NoError:
         print(" -> Dobot Connected Successfully!")
+        dType.dSleep(500)
         dType.SetQueuedCmdClear(api)
+        dType.SetWAITCmd(api, 100, isQueued=1)
         dType.SetPTPJointParams(api, 200, 200, 200, 200, 200, 200, 200, 200, isQueued=1)
         dType.SetPTPCommonParams(api, 100, 100, isQueued=1)
         dType.SetQueuedCmdStartExec(api)

@@ -2,7 +2,8 @@ import sys
 import threading
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QHBoxLayout, QLabel, QPushButton, QLineEdit, 
-                               QGridLayout, QGroupBox, QComboBox, QMessageBox, QDoubleSpinBox)
+                               QGridLayout, QGroupBox, QComboBox, QMessageBox, QDoubleSpinBox,
+                               QSlider, QDial)
 from PySide6.QtCore import QTimer, Qt, Signal, QPointF, QRectF
 from PySide6.QtGui import QFont, QColor, QPalette, QPainter, QPen, QBrush
 
@@ -13,7 +14,7 @@ class WorkspaceMap(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(400, 400)
+        self.setMinimumSize(300, 200)
         self.current_x = 0.0
         self.current_y = 0.0
         self.target_x = 0.0
@@ -26,60 +27,67 @@ class WorkspaceMap(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
-        # Background
         painter.fillRect(self.rect(), QColor("#11111b"))
         
         w = self.width()
         h = self.height()
         
-        # Origin at bottom center
-        origin_x = w / 2
-        origin_y = h - 30
+        # Origin at right center
+        origin_x = w - 30
+        origin_y = h / 2
         
         # Scale
-        scale = min(w / 2 - 20, h - 50) / 350.0
+        scale = min(w - 50, h / 2 - 20) / 350.0
         if scale <= 0: return
         
         def to_screen(rx, ry):
-            # Dobot X is forward, Y is left. So X -> Up, Y -> Left
-            return origin_x - ry * scale, origin_y - rx * scale
+            # X points LEFT -> subtract from origin_x
+            sx = origin_x - rx * scale
+            # Positive Y points DOWN -> add to origin_y
+            sy = origin_y + ry * scale
+            return sx, sy
+
+        max_x_screen = origin_x - 350 * scale
 
         # Grid
         painter.setPen(QPen(QColor("#313244"), 1, Qt.DashLine))
+        # X lines (vertical)
         for x in range(0, 351, 50):
             sx, sy = to_screen(x, 0)
-            painter.drawLine(0, sy, w, sy)
-            painter.drawText(w - 30, sy - 5, f"{x}")
+            painter.drawLine(sx, 0, sx, h)
+            painter.drawText(sx - 10, h - 5, f"{x}")
+            
+        # Y lines (horizontal)
         for y in range(-350, 351, 50):
             sx, sy = to_screen(0, y)
-            painter.drawLine(sx, 0, sx, h)
+            painter.drawLine(max_x_screen, sy, origin_x, sy)
             if y != 0:
-                painter.drawText(sx + 5, 15, f"{y}")
+                painter.drawText(max_x_screen - 30, sy + 5, f"{y}")
             
         # Axes
         painter.setPen(QPen(QColor("#89b4fa"), 2))
         sx, sy = to_screen(0, 0)
         ex, ey = to_screen(350, 0)
         painter.drawLine(sx, sy, ex, ey) # X axis
-        painter.drawText(ex + 5, ey, "X")
+        painter.drawText(ex - 15, ey - 5, "X")
         
         ex, ey = to_screen(0, -350)
-        painter.drawLine(sx, sy, ex, ey) # -Y axis
-        painter.drawText(ex, ey - 5, "-Y (Right)")
+        painter.drawLine(sx, sy, ex, ey) # -Y axis (UP)
+        painter.drawText(sx + 5, ey + 10, "-Y")
         
         ex, ey = to_screen(0, 350)
-        painter.drawLine(sx, sy, ex, ey) # +Y axis
-        painter.drawText(ex - 60, ey - 5, "+Y (Left)")
+        painter.drawLine(sx, sy, ex, ey) # +Y axis (DOWN)
+        painter.drawText(sx + 5, ey - 5, "+Y")
         
         # Work area arcs
         painter.setPen(QPen(QColor("#a6e3a1"), 2, Qt.DotLine))
         rect_max = QRectF(origin_x - self.max_reach * scale, origin_y - self.max_reach * scale, 
                           self.max_reach * 2 * scale, self.max_reach * 2 * scale)
-        painter.drawArc(rect_max, 0 * 16, 180 * 16)
+        painter.drawArc(rect_max, 90 * 16, 180 * 16)
         
         rect_min = QRectF(origin_x - self.min_reach * scale, origin_y - self.min_reach * scale, 
                           self.min_reach * 2 * scale, self.min_reach * 2 * scale)
-        painter.drawArc(rect_min, 0 * 16, 180 * 16)
+        painter.drawArc(rect_min, 90 * 16, 180 * 16)
         
         # Target pos
         tx, ty = to_screen(self.target_x, self.target_y)
@@ -99,18 +107,19 @@ class WorkspaceMap(QWidget):
         
         # Current coordinates text
         painter.setPen(QPen(QColor("#cdd6f4"), 1))
-        painter.drawText(10, h - 10, f"Pos: ({self.current_x:.1f}, {self.current_y:.1f}) Target: ({self.target_x:.1f}, {self.target_y:.1f})")
+        painter.drawText(10, 20, f"Pos: ({self.current_x:.1f}, {self.current_y:.1f})")
+        painter.drawText(10, 35, f"Target: ({self.target_x:.1f}, {self.target_y:.1f})")
 
     def mousePressEvent(self, event):
         w = self.width()
         h = self.height()
-        origin_x = w / 2
-        origin_y = h - 30
-        scale = min(w / 2 - 20, h - 50) / 350.0
+        origin_x = w - 30
+        origin_y = h / 2
+        scale = min(w - 50, h / 2 - 20) / 350.0
         if scale <= 0: return
         
-        rx = (origin_y - event.position().y()) / scale
-        ry = (origin_x - event.position().x()) / scale
+        rx = (origin_x - event.position().x()) / scale
+        ry = (event.position().y() - origin_y) / scale
         
         # Simple bounding
         if rx < -50: rx = -50
@@ -122,6 +131,14 @@ class WorkspaceMap(QWidget):
         self.target_y = ry
         self.update()
         self.target_clicked.emit(self.target_x, self.target_y)
+
+    def resizeEvent(self, event):
+        # Maintain roughly 1:2 aspect ratio (width is half the height)
+        h = self.height()
+        desired_w = int(h / 2) + 60
+        self.setMaximumWidth(desired_w)
+        self.setMaximumHeight(16777215) # Default max size in Qt
+        super().resizeEvent(event)
 
 class DobotGUI(QMainWindow):
     def __init__(self):
@@ -148,15 +165,57 @@ class DobotGUI(QMainWindow):
         main_layout = QHBoxLayout(central_widget)
         main_layout.setSpacing(20)
         
-        # --- Left Panel: Workspace Map ---
+        # --- Left Panel: Workspace Map & Visual Controls ---
         left_layout = QVBoxLayout()
-        map_group = QGroupBox("2D Workspace Map (Top View)")
+        map_group = QGroupBox("Graphical Controls (Top View)")
         map_layout = QVBoxLayout()
+        
+        map_top_layout = QHBoxLayout()
+        
         self.workspace_map = WorkspaceMap()
         self.workspace_map.target_clicked.connect(self.on_map_clicked)
-        map_layout.addWidget(self.workspace_map)
+        map_top_layout.addWidget(self.workspace_map, stretch=1)
         
-        lbl_info = QLabel("Click on the map to set X/Y target coordinates.")
+        zr_layout = QVBoxLayout()
+        zr_layout.setAlignment(Qt.AlignHCenter)
+        
+        lbl_r = QLabel("🔄 R")
+        lbl_r.setToolTip("Rotation")
+        lbl_r.setAlignment(Qt.AlignCenter)
+        self.r_dial = QDial()
+        self.r_dial.setRange(-180, 180)
+        self.r_dial.setNotchesVisible(True)
+        self.r_dial.setFixedSize(60, 60)
+        self.r_dial.valueChanged.connect(self.on_r_dial_changed)
+        zr_layout.addWidget(lbl_r)
+        zr_layout.addWidget(self.r_dial)
+        
+        zr_layout.addSpacing(20)
+        
+        lbl_z = QLabel("↕ Z")
+        lbl_z.setToolTip("Height")
+        lbl_z.setAlignment(Qt.AlignCenter)
+        self.z_slider = QSlider(Qt.Vertical)
+        self.z_slider.setRange(-50, 200)
+        self.z_slider.valueChanged.connect(self.on_z_slider_changed)
+        zr_layout.addWidget(lbl_z)
+        zr_layout.addWidget(self.z_slider, alignment=Qt.AlignHCenter)
+        
+        map_top_layout.addLayout(zr_layout)
+        map_layout.addLayout(map_top_layout)
+        
+        l_layout = QHBoxLayout()
+        lbl_l = QLabel("↔ L")
+        lbl_l.setToolTip("Linear Rail")
+        self.l_slider = QSlider(Qt.Horizontal)
+        self.l_slider.setRange(0, 1000)
+        self.l_slider.valueChanged.connect(self.on_l_slider_changed)
+        l_layout.addWidget(lbl_l)
+        l_layout.addWidget(self.l_slider)
+        
+        map_layout.addLayout(l_layout)
+        
+        lbl_info = QLabel("Click map for X/Y. Use sliders/dial for Z, R, L.")
         lbl_info.setStyleSheet("color: #89b4fa; font-size: 12px;")
         lbl_info.setAlignment(Qt.AlignCenter)
         map_layout.addWidget(lbl_info)
@@ -221,6 +280,12 @@ class DobotGUI(QMainWindow):
                 spin_target.valueChanged.connect(self.on_target_x_changed)
             elif axis == "Y":
                 spin_target.valueChanged.connect(self.on_target_y_changed)
+            elif axis == "Z":
+                spin_target.valueChanged.connect(self.on_target_z_changed)
+            elif axis == "R":
+                spin_target.valueChanged.connect(self.on_target_r_changed)
+            elif axis == "L":
+                spin_target.valueChanged.connect(self.on_target_l_changed)
             
             btn_minus = QPushButton(f"-")
             btn_minus.setFixedWidth(50)
@@ -258,6 +323,13 @@ class DobotGUI(QMainWindow):
         step_layout.addWidget(self.step_spin)
         step_group.setLayout(step_layout)
         
+        mode_group = QGroupBox("Movement Type")
+        mode_layout = QHBoxLayout()
+        self.move_mode_combo = QComboBox()
+        self.move_mode_combo.addItems(["Linear (MOVL)", "Joint (MOVJ)", "Jump (JUMP)"])
+        mode_layout.addWidget(self.move_mode_combo)
+        mode_group.setLayout(mode_layout)
+        
         self.move_coords_btn = QPushButton("Move to Targets")
         self.move_coords_btn.setMinimumHeight(50)
         self.move_coords_btn.setStyleSheet("background-color: #2ea043; color: white; font-weight: bold; font-size: 14px;")
@@ -269,6 +341,7 @@ class DobotGUI(QMainWindow):
         self.home_btn.clicked.connect(self.go_home)
         
         bottom_layout.addWidget(step_group)
+        bottom_layout.addWidget(mode_group)
         bottom_layout.addWidget(self.move_coords_btn)
         bottom_layout.addWidget(self.home_btn)
         
@@ -288,6 +361,46 @@ class DobotGUI(QMainWindow):
     def on_target_y_changed(self, val):
         self.workspace_map.target_y = val
         self.workspace_map.update()
+
+    def on_target_z_changed(self, val):
+        self.z_slider.blockSignals(True)
+        self.z_slider.setValue(int(val))
+        self.z_slider.blockSignals(False)
+
+    def on_target_r_changed(self, val):
+        self.r_dial.blockSignals(True)
+        self.r_dial.setValue(int(val))
+        self.r_dial.blockSignals(False)
+
+    def on_target_l_changed(self, val):
+        self.l_slider.blockSignals(True)
+        self.l_slider.setValue(int(val))
+        self.l_slider.blockSignals(False)
+        
+    def on_r_dial_changed(self, val):
+        self.ui_elements["R"]["target"].blockSignals(True)
+        self.ui_elements["R"]["target"].setValue(val)
+        self.ui_elements["R"]["target"].blockSignals(False)
+
+    def on_z_slider_changed(self, val):
+        self.ui_elements["Z"]["target"].blockSignals(True)
+        self.ui_elements["Z"]["target"].setValue(val)
+        self.ui_elements["Z"]["target"].blockSignals(False)
+
+    def on_l_slider_changed(self, val):
+        self.ui_elements["L"]["target"].blockSignals(True)
+        self.ui_elements["L"]["target"].setValue(val)
+        self.ui_elements["L"]["target"].blockSignals(False)
+
+    def get_selected_ptp_mode(self):
+        text = self.move_mode_combo.currentText()
+        if "Linear" in text:
+            return dType.PTPMode.PTPMOVLXYZMode
+        elif "Joint" in text:
+            return dType.PTPMode.PTPMOVJXYZMode
+        elif "Jump" in text:
+            return dType.PTPMode.PTPJUMPXYZMode
+        return dType.PTPMode.PTPMOVLXYZMode
         
     def apply_dark_theme(self):
         # Dark theme stylesheet for a modern rich aesthetic
@@ -349,6 +462,10 @@ class DobotGUI(QMainWindow):
             self.ui_elements[axis]["target"].setEnabled(enabled)
         self.home_btn.setEnabled(enabled)
         self.move_coords_btn.setEnabled(enabled)
+        self.move_mode_combo.setEnabled(enabled)
+        self.z_slider.setEnabled(enabled)
+        self.r_dial.setEnabled(enabled)
+        self.l_slider.setEnabled(enabled)
         
     def toggle_connection(self):
         if not self.connected:
@@ -429,9 +546,9 @@ class DobotGUI(QMainWindow):
         elif axis == "R": target_r += delta
         elif axis == "L": target_l += delta
         
-        # Send move command (using PTPMOVLXYZMode for linear movements)
-        # For rail movements, we use SetPTPWithLCmd
-        dType.SetPTPWithLCmd(self.api, dType.PTPMode.PTPMOVLXYZMode, target_x, target_y, target_z, target_r, target_l, isQueued=1)
+        # Send move command based on selected mode
+        mode = self.get_selected_ptp_mode()
+        dType.SetPTPWithLCmd(self.api, mode, target_x, target_y, target_z, target_r, target_l, isQueued=1)
         
     def move_to_targets(self):
         if not self.connected: return
@@ -442,8 +559,9 @@ class DobotGUI(QMainWindow):
         target_r = self.ui_elements["R"]["target"].value()
         target_l = self.ui_elements["L"]["target"].value()
         
-        # Send move command (using PTPMOVLXYZMode for linear movements)
-        dType.SetPTPWithLCmd(self.api, dType.PTPMode.PTPMOVLXYZMode, target_x, target_y, target_z, target_r, target_l, isQueued=1)
+        # Send move command based on selected mode
+        mode = self.get_selected_ptp_mode()
+        dType.SetPTPWithLCmd(self.api, mode, target_x, target_y, target_z, target_r, target_l, isQueued=1)
 
     def go_home(self):
         if not self.connected: return
@@ -456,6 +574,10 @@ class DobotGUI(QMainWindow):
             # Set HOME parameters and trigger home command
             dType.SetHOMEParams(self.api, 200, 200, 200, 200, isQueued=1)
             dType.SetHOMECmd(self.api, temp=0, isQueued=1)
+            
+            # Automatically move to predefined coordinates after homing
+            # x=200, y=0, z=50, r=0, l=200
+            dType.SetPTPWithLCmd(self.api, dType.PTPMode.PTPMOVLXYZMode, 200, 0, 50, 0, 200, isQueued=1)
 
     def closeEvent(self, event):
         if self.connected:

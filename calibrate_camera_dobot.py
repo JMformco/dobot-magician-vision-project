@@ -32,9 +32,13 @@ def mouse_callback(event, x, y, flags, param):
     global STATE, calibration_points_camera, calibration_points_robot, calibration_matrix, api, ORIGINAL_FRAME_SIZE
     
     if event == cv2.EVENT_LBUTTONDBLCLK:
-        # Scale back the click coordinates to original resolution!
-        orig_x = int(x / RENDER_SCALE)
-        orig_y = int(y / RENDER_SCALE)
+        # Scale back the click coordinates to original resolution (which is on rotated frame)
+        rotated_x = int(x / RENDER_SCALE)
+        rotated_y = int(y / RENDER_SCALE)
+        
+        # Un-rotate to get original sensor coordinates
+        orig_x = rotated_y
+        orig_y = ORIGINAL_FRAME_SIZE[1] - rotated_x
         
         if STATE == "CALIBRATION":
             # Get Dobot Current Pose
@@ -192,7 +196,8 @@ def main():
 
             # Draw calibration overlay and info
             # The Hikrobot frames are huge (usually 2448x2048), we scale them
-            display_frame = cv2.resize(frame, (int(frame.shape[1] * RENDER_SCALE), int(frame.shape[0] * RENDER_SCALE)))
+            rotated_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            display_frame = cv2.resize(rotated_frame, (int(rotated_frame.shape[1] * RENDER_SCALE), int(rotated_frame.shape[0] * RENDER_SCALE)))
             
             # Fetch current Dobot position to show it on screen continuously
             pose = dType.GetPose(api)
@@ -202,13 +207,16 @@ def main():
             if STATE == "CALIBRATION":
                 state_text += f" (Pts: {len(calibration_points_camera)}/4)"
                 
-            # Put text directly safely
+            # Put text directly safely on rotated frame
             cv2.putText(display_frame, state_text, (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
             cv2.putText(display_frame, info_text, (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
             # Draw clicked points
             for pt in calibration_points_camera:
-                scaled_pt = (int(pt[0] * RENDER_SCALE), int(pt[1] * RENDER_SCALE))
+                orig_x, orig_y = pt[0], pt[1]
+                rot_x = ORIGINAL_FRAME_SIZE[1] - orig_y
+                rot_y = orig_x
+                scaled_pt = (int(rot_x * RENDER_SCALE), int(rot_y * RENDER_SCALE))
                 cv2.circle(display_frame, scaled_pt, 5, (0, 255, 0), -1)
 
             cv2.imshow("Dobot Vision Calibration", display_frame)

@@ -213,6 +213,7 @@ def main():
                     boundary_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
                     cv2.rectangle(boundary_mask, (0,0), (frame.shape[1]-1, frame.shape[0]-1), 255, 5)
                     
+                texts_to_draw = []
                 detected_color, detected_center, max_area = None, None, 0
 
                 for color in ['red', 'blue', 'green', 'yellow']:
@@ -246,8 +247,7 @@ def main():
                     cv2.circle(frame, detected_center, 15, (0, 255, 0), 3)
                     if stable_color == detected_color:
                         elapsed = time.time() - stable_start_time
-                        cv2.putText(frame, f"{stable_color}: {elapsed:.1f}s", (20, 60), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 3)
+                        texts_to_draw.append((f"{stable_color}: {elapsed:.1f}s", (20, 60), 1.5, (0, 255, 255), 3))
                         
                         if elapsed >= 2.0:
                             print(f"[ACTION] Procesando cubo {detected_color}...")
@@ -290,7 +290,11 @@ def main():
                     stable_color = None
 
                 # Actualizar frame global para Flask
-                global_frame = cv2.resize(frame, (640, 480))
+                rotated_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                for txt, pos, font_scale, color, thickness in texts_to_draw:
+                    cv2.putText(rotated_frame, txt, pos, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+                
+                global_frame = cv2.resize(rotated_frame, (480, 640))
 
                 # Mostrar ventana local (puede fallar en Node-RED, por eso el try)
                 try:

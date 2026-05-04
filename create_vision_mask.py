@@ -22,8 +22,12 @@ def mouse_callback(event, x, y, flags, param):
     
     if event == cv2.EVENT_LBUTTONDOWN and STATE in ["DRAWING", "SAVED"]:
         STATE = "DRAWING"
-        orig_x = int(x / RENDER_SCALE)
-        orig_y = int(y / RENDER_SCALE)
+        rotated_x = int(x / RENDER_SCALE)
+        rotated_y = int(y / RENDER_SCALE)
+        
+        orig_x = rotated_y
+        orig_y = ORIGINAL_FRAME_SIZE[1] - rotated_x
+        
         mask_points.append([orig_x, orig_y])
         print(f"Added point: ({orig_x}, {orig_y})")
 
@@ -101,11 +105,19 @@ def main():
             
             ORIGINAL_FRAME_SIZE = (stbInfo.nWidth, stbInfo.nHeight)
 
-            display_frame = cv2.resize(frame, (int(frame.shape[1] * RENDER_SCALE), int(frame.shape[0] * RENDER_SCALE)))
+            rotated_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            display_frame = cv2.resize(rotated_frame, (int(rotated_frame.shape[1] * RENDER_SCALE), int(rotated_frame.shape[0] * RENDER_SCALE)))
             
             # Draw lines and points
             if len(mask_points) > 0:
-                pts = np.array([[int(p[0]*RENDER_SCALE), int(p[1]*RENDER_SCALE)] for p in mask_points], np.int32)
+                mapped_points = []
+                for p in mask_points:
+                    orig_x, orig_y = p[0], p[1]
+                    rot_x = ORIGINAL_FRAME_SIZE[1] - orig_y
+                    rot_y = orig_x
+                    mapped_points.append([rot_x, rot_y])
+
+                pts = np.array([[int(p[0]*RENDER_SCALE), int(p[1]*RENDER_SCALE)] for p in mapped_points], np.int32)
                 pts = pts.reshape((-1, 1, 2))
                 # Draw lines between points
                 cv2.polylines(display_frame, [pts], isClosed=False, color=(0, 255, 0), thickness=2)

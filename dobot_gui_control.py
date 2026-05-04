@@ -209,6 +209,7 @@ class DobotGUI(QMainWindow):
         lbl_l.setToolTip("Linear Rail")
         self.l_slider = QSlider(Qt.Horizontal)
         self.l_slider.setRange(0, 1000)
+        self.l_slider.setInvertedAppearance(True)
         self.l_slider.valueChanged.connect(self.on_l_slider_changed)
         l_layout.addWidget(lbl_l)
         l_layout.addWidget(self.l_slider)
@@ -572,7 +573,7 @@ class DobotGUI(QMainWindow):
         
         if reply == QMessageBox.Yes:
             # Set HOME parameters and trigger home command
-            dType.SetHOMEParams(self.api, 200, 200, 200, 200, isQueued=1)
+            dType.SetHOMEParams(self.api, 200, 0, 50, 0, isQueued=1)
             dType.SetHOMECmd(self.api, temp=0, isQueued=1)
             
             # Automatically move to predefined coordinates after homing
@@ -590,4 +591,6 @@ if __name__ == "__main__":
     app.setStyle("Fusion")
     window = DobotGUI()
     window.show()
+    window.raise_()
+    window.activateWindow()
     sys.exit(app.exec())

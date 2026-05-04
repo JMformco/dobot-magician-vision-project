@@ -45,6 +45,8 @@ def main():
         # 6. Clean up the mask using morphological operations (removes tiny specks of false reds)
         mask = cv2.erode(mask, None, iterations=2)
         mask = cv2.dilate(mask, None, iterations=2)
+        
+        text_to_draw = None
 
         # 7. Find contours (outlines) of the red shapes from the mask
         contours, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -72,15 +74,19 @@ def main():
                     # Draw a dot right on the exact center coordinate
                     cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
                     
-                    # Display the pixel coordinate as text on the screen
-                    text = f"X:{center_x} Y:{center_y}"
-                    cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    # Store text to draw AFTER rotation
+                    text_to_draw = f"X:{center_x} Y:{center_y}"
 
-        # 9. Show the live camera feed window
-        cv2.imshow("Original Frame - Red Tracker", frame)
+        # 9. Rotate and show the live camera feed window
+        display_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        if text_to_draw:
+            cv2.putText(display_frame, text_to_draw, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+        cv2.imshow("Original Frame - Red Tracker", display_frame)
         
         # (Optional) Show the Black & White Mask to see what OpenCV "sees"
-        cv2.imshow("Red Mask", mask)
+        display_mask = cv2.rotate(mask, cv2.ROTATE_90_CLOCKWISE)
+        cv2.imshow("Red Mask", display_mask)
 
         # 10. Break the loop if the user presses 'q'
         if cv2.waitKey(1) & 0xFF == ord('q'):

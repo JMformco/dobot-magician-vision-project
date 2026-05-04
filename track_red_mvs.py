@@ -142,6 +142,8 @@ def main():
             mask = mask1 + mask2
             mask = cv2.erode(mask, None, iterations=2)
             mask = cv2.dilate(mask, None, iterations=2)
+            
+            text_to_draw = None
 
             contours, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -157,12 +159,15 @@ def main():
                     if radius > 10:
                         cv2.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
                         cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
-                        cv2.putText(frame, f"X:{center_x} Y:{center_y}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        text_to_draw = f"X:{center_x} Y:{center_y}"
 
             # Show the camera feed
             # Note: Hikrobot frames are huge (e.g. 2448x2048). We might want to shrink the window preview.
-            display_frame = cv2.resize(frame, (800, 600))
-            display_mask = cv2.resize(mask, (800, 600))
+            display_frame = cv2.resize(cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE), (600, 800))
+            display_mask = cv2.resize(cv2.rotate(mask, cv2.ROTATE_90_CLOCKWISE), (600, 800))
+            
+            if text_to_draw:
+                cv2.putText(display_frame, text_to_draw, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             
             cv2.imshow("Hikrobot - Red Tracker", display_frame)
             cv2.imshow("Hikrobot - Red Mask", display_mask)

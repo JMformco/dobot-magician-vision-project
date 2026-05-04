@@ -226,6 +226,8 @@ def main():
             if mask is not None and roi_mask is not None:
                 mask = cv2.bitwise_and(mask, roi_mask)
 
+            texts_to_draw = []
+
             if mask is not None:
                 # Find contours
                 contours, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -251,15 +253,22 @@ def main():
                             
                             # Annotate Text (Shape, Dim, Center)
                             text_str = f"{shape_name} | {dimensions} | C:({cx},{cy})"
-                            cv2.putText(frame, text_str, (cx - 50, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                            
+                            rot_x = frame.shape[0] - cy
+                            rot_y = cx
+                            texts_to_draw.append((text_str, (rot_x - 50, rot_y - 20), 0.7, (0, 255, 255), 2))
 
             # Draw currently active color on screen
-            cv2.putText(frame, f"Tracking: {active_color.upper()}", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 255), 3)
+            texts_to_draw.append((f"Tracking: {active_color.upper()}", (20, 50), 1.5, (255, 0, 255), 3))
+            
+            rotated_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            for txt, pos, font_scale, color, thickness in texts_to_draw:
+                cv2.putText(rotated_frame, txt, pos, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
 
             # Resize for display so it fits nicely on a standard monitor
-            display_frame = cv2.resize(frame, (960, 720))
+            display_frame = cv2.resize(rotated_frame, (720, 960))
             if mask is not None:
-                display_mask = cv2.resize(mask, (960, 720))
+                display_mask = cv2.resize(cv2.rotate(mask, cv2.ROTATE_90_CLOCKWISE), (720, 960))
                 cv2.imshow("Mask View", display_mask)
             
             cv2.imshow("Hikrobot - Shape and Color Tracker", display_frame)
